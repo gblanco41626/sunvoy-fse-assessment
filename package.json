@@ -1,0 +1,24 @@
+{
+  "name": "sunvoy-fse-assessment",
+  "version": "1.0.0",
+  "description": "Sunvoy Full Stack Engineer Assessment",
+  "scripts": {
+    "start": "tsc && node dist/index.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/gblanco41626/sunvoy-fse-assessment.git"
+  },
+  "keywords": [],
+  "author": "Gladys Blanco",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/gblanco41626/sunvoy-fse-assessment/issues"
+  },
+  "homepage": "https://github.com/gblanco41626/sunvoy-fse-assessment#readme",
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.8.3"
+  }
+}
