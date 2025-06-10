@@ -17,8 +17,12 @@
   },
   "homepage": "https://github.com/gblanco41626/sunvoy-fse-assessment#readme",
   "devDependencies": {
+    "@types/jsdom": "^21.1.7",
     "@types/node": "^24.0.0",
     "ts-node": "^10.9.2",
     "typescript": "^5.8.3"
+  },
+  "dependencies": {
+    "jsdom": "^26.1.0"
   }
 }
