@@ -6,7 +6,7 @@ import crypto from 'crypto';
 const URLS = {
   users: 'https://challenge.sunvoy.com/api/users',
   tokens: 'https://challenge.sunvoy.com/settings/tokens',
-  settings: 'https://challenge.sunvoy.com/settings',
+  settings: 'https://api.challenge.sunvoy.com/api/settings',
 };
 
 const COOKIE = 'JSESSIONID=d147e1d1-8559-4a7b-8d3b-73e54f4ba1b8;';
@@ -26,7 +26,7 @@ async function fetchUsers(): Promise<Object[]> {
   return data;
 }
 
-function createSignedRequest(t: Object): Object {
+function createSignedRequest(t: Object): string {
   const e = Math.floor(Date.now() / 1e3);
   const i: { [key: string]: any } = {
     ...t,
@@ -37,15 +37,10 @@ function createSignedRequest(t: Object): Object {
   o.update(n);
   const h = o.digest("hex").toUpperCase();
   
-  return {
-    payload: n,
-    checkcode: h,
-    fullPayload: `${n}&checkcode=${h}`,
-    timestamp: e
-  }
+  return `${n}&checkcode=${h}`;
 }
 
-async function getAuthorizedToken(): Promise<Object> {
+async function getAuthorizedToken(): Promise<string> {
   let token: { [key: string]: any } = {};
 
   const res = await fetch(URLS.tokens, {
@@ -68,9 +63,24 @@ async function getAuthorizedToken(): Promise<Object> {
 }
 
 async function fetchAuthenticatedUsers(): Promise<Object[]> {
-    const token: Object = await getAuthorizedToken();
+  const requestBody: string = await getAuthorizedToken();
 
-    return [];
+  const res = await fetch(URLS.settings, {
+    method: 'POST',
+    headers: {
+      'Cookie': COOKIE,
+      'Content-Type': 'application/x-www-form-urlencoded'
+    },
+    body: requestBody
+  });
+
+  if (!res.ok) {
+    throw new Error(`POST ${URLS.settings} failed with status: ${res.status}`);
+  }
+
+  const data = await res.text();
+  
+  return [JSON.parse(data)];
 }
 
 async function main(): Promise<void> {
