@@ -7,9 +7,53 @@ const URLS = {
   users: 'https://challenge.sunvoy.com/api/users',
   tokens: 'https://challenge.sunvoy.com/settings/tokens',
   settings: 'https://api.challenge.sunvoy.com/api/settings',
+  login: 'https://challenge.sunvoy.com/login',
 };
 
 const COOKIE = 'JSESSIONID=d147e1d1-8559-4a7b-8d3b-73e54f4ba1b8;';
+
+async function login(): Promise<string> {
+  const res = await fetch(URLS.login, {
+    method: 'GET',
+    redirect: 'manual'
+  });
+
+  if (![200, 302].includes(res.status)) {
+    throw new Error(`GET ${URLS.login} failed with status: ${res.status}`);
+  }
+
+  const loginPage = await res.text();
+  const dom = new JSDOM(loginPage);
+  const nonceElement = dom.window
+                          .document
+                          .querySelector<HTMLInputElement>(
+                            'input[type="hidden"][name="nonce"]'
+                          );
+  const nonce = (<HTMLInputElement>nonceElement).value;
+
+  if (!nonce) {
+    throw new Error(`Nonce not found`);
+  }
+
+  const loginRes = await fetch(URLS.login, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/x-www-form-urlencoded',
+    },
+    body: `nonce=${nonce}&username=demo%40example.org&password=test`,
+    redirect: 'manual'
+  });
+
+  if (![200, 302].includes(loginRes.status)) {
+    throw new Error(`GET ${URLS.login} failed with status: ${loginRes.status}`);
+  }
+
+  const jSessionId = loginRes.headers.getSetCookie()[0];
+
+  await fs.writeFile('jsessionid.txt', JSON.stringify(jSessionId));
+
+  return jSessionId;
+}
 
 async function fetchUsers(): Promise<Object[]> {
   const res = await fetch(URLS.users, {
@@ -85,12 +129,13 @@ async function fetchAuthenticatedUsers(): Promise<Object[]> {
 
 async function main(): Promise<void> {
   try {
-    let userArray: Object[] = await fetchUsers();
+    login();
+    // let userArray: Object[] = await fetchUsers();
 
-    const authUserArray: Object[] = await fetchAuthenticatedUsers();
-    userArray.push(...authUserArray);
+    // const authUserArray: Object[] = await fetchAuthenticatedUsers();
+    // userArray.push(...authUserArray);
 
-    await fs.writeFile('users.json', JSON.stringify(userArray, null, 2));
+    // await fs.writeFile('users.json', JSON.stringify(userArray, null, 2));
   } catch(err) {
     console.error('Error in main:', err);
     process.exit(1);
