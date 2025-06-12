@@ -47,7 +47,7 @@ async function fetchWithCookie(
 }
 
 async function login(): Promise<string> {
-  const res = await fetchWithCookie(URLS.login, {
+  const res = await fetch(URLS.login, {
     method: 'GET',
     redirect: 'manual'
   });
@@ -65,7 +65,7 @@ async function login(): Promise<string> {
     throw new Error(`Nonce not found`);
   }
 
-  const loginRes = await fetchWithCookie(URLS.login, {
+  const loginRes = await fetch(URLS.login, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/x-www-form-urlencoded',
