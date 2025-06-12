@@ -10,17 +10,47 @@ const URLS = {
   login: 'https://challenge.sunvoy.com/login',
 };
 
-const COOKIE = 'JSESSIONID=d147e1d1-8559-4a7b-8d3b-73e54f4ba1b8;';
+async function fetchWithCookie(
+  url: string,
+  params: {
+    method?: string,
+    headers?: Record<string, string>,
+    body?: string,
+    redirect?: RequestRedirect,
+  }): Promise<Response> {
+  const {
+    method  = 'GET',
+    headers = {},
+    body,
+    redirect = 'follow',
+  } = params;
 
-async function login(): Promise<string> {
-  const res = await fetch(URLS.login, {
-    method: 'GET',
-    redirect: 'manual'
+  const jSessionId = await getJSessionID();
+  
+  const finalHeaders = {
+    'Cookie': jSessionId,
+    ...headers
+  }
+
+  const res = await fetch(url, {
+    method: method,
+    headers: finalHeaders,
+    body: body,
+    redirect: redirect
   });
 
   if (![200, 302].includes(res.status)) {
-    throw new Error(`GET ${URLS.login} failed with status: ${res.status}`);
+    throw new Error(`${method} ${url} failed with status: ${res.status}`);
   }
+
+  return res;
+}
+
+async function login(): Promise<string> {
+  const res = await fetchWithCookie(URLS.login, {
+    method: 'GET',
+    redirect: 'manual'
+  });
 
   const loginPage = await res.text();
   const dom = new JSDOM(loginPage);
@@ -35,7 +65,7 @@ async function login(): Promise<string> {
     throw new Error(`Nonce not found`);
   }
 
-  const loginRes = await fetch(URLS.login, {
+  const loginRes = await fetchWithCookie(URLS.login, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/x-www-form-urlencoded',
@@ -44,26 +74,37 @@ async function login(): Promise<string> {
     redirect: 'manual'
   });
 
-  if (![200, 302].includes(loginRes.status)) {
-    throw new Error(`GET ${URLS.login} failed with status: ${loginRes.status}`);
-  }
-
   const jSessionId = loginRes.headers.getSetCookie()[0];
 
-  await fs.writeFile('jsessionid.txt', JSON.stringify(jSessionId));
+  await fs.writeFile('jsessionid.txt', jSessionId);
 
-  return jSessionId;
+  return getJSessionIDPair(jSessionId)[0];
+}
+
+function getJSessionIDPair(jSessionTxt: string): any[] {
+  const jSessionArr = jSessionTxt.split('; ');
+  const jSessionID = jSessionArr[0];
+  
+  const expiry = new Date(jSessionArr[3].split('=')[1]);
+
+  return [jSessionID, expiry];
+}
+
+async function getJSessionID(): Promise<string> {
+  const jSessionTxt  = await fs.readFile('jsessionid.txt', 'utf8');
+  const now = new Date();
+
+  let [jSessionID, expiry] = getJSessionIDPair(jSessionTxt);
+
+  if (expiry < now) {
+    jSessionID = await login();
+  }
+
+  return jSessionID;
 }
 
 async function fetchUsers(): Promise<Object[]> {
-  const res = await fetch(URLS.users, {
-    method: 'POST',
-    headers: { 'Cookie': COOKIE },
-  });
-
-  if (!res.ok) {
-    throw new Error(`POST ${URLS.users} failed with status: ${res.status}`);
-  }
+  const res = await fetchWithCookie(URLS.users, { method: 'POST' });
 
   const data = await res.json();
   
@@ -87,14 +128,7 @@ function createSignedRequest(t: Object): string {
 async function getAuthorizedToken(): Promise<string> {
   let token: { [key: string]: any } = {};
 
-  const res = await fetch(URLS.tokens, {
-    method: 'GET',
-    headers: { 'Cookie': COOKIE },
-  });
-
-  if (!res.ok) {
-    throw new Error(`POST ${URLS.tokens} failed with status: ${res.status}`);
-  }
+  const res = await fetchWithCookie(URLS.tokens, { method: 'GET' });
 
   const data = await res.text();
   const dom = new JSDOM(data);
@@ -109,18 +143,13 @@ async function getAuthorizedToken(): Promise<string> {
 async function fetchAuthenticatedUsers(): Promise<Object[]> {
   const requestBody: string = await getAuthorizedToken();
 
-  const res = await fetch(URLS.settings, {
+  const res = await fetchWithCookie(URLS.settings, {
     method: 'POST',
     headers: {
-      'Cookie': COOKIE,
       'Content-Type': 'application/x-www-form-urlencoded'
     },
     body: requestBody
   });
-
-  if (!res.ok) {
-    throw new Error(`POST ${URLS.settings} failed with status: ${res.status}`);
-  }
 
   const data = await res.text();
   
@@ -129,13 +158,12 @@ async function fetchAuthenticatedUsers(): Promise<Object[]> {
 
 async function main(): Promise<void> {
   try {
-    login();
-    // let userArray: Object[] = await fetchUsers();
+    let userArray: Object[] = await fetchUsers();
 
-    // const authUserArray: Object[] = await fetchAuthenticatedUsers();
-    // userArray.push(...authUserArray);
+    const authUserArray: Object[] = await fetchAuthenticatedUsers();
+    userArray.push(...authUserArray);
 
-    // await fs.writeFile('users.json', JSON.stringify(userArray, null, 2));
+    await fs.writeFile('users.json', JSON.stringify(userArray, null, 2));
   } catch(err) {
     console.error('Error in main:', err);
     process.exit(1);

@@ -1,1 +1,1 @@
-"JSESSIONID=51ceb975-6481-4af7-bd80-163f06bbdd1a; Max-Age=86400; Path=/; Expires=Thu, 12 Jun 2025 10:15:22 GMT; HttpOnly; Secure; SameSite=Strict"
+JSESSIONID=51ceb975-6481-4af7-bd80-163f06bbdd1a; Max-Age=86400; Path=/; Expires=Thu, 12 Jun 2025 10:15:22 GMT; HttpOnly; Secure; SameSite=Strict
